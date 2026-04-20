@@ -569,20 +569,54 @@ const DATA = {
       annual_value: "Segilola ~$230M; estimated informal ~$2B flowing to UAE",
       dest_port: "mmia",
       route_label: "Osun + Zamfara → Lagos (air)",
+      flows_2024: [
+        {
+          label: "Formal (Segilola)", status: "formal",
+          waypoints: [
+            { node: "segilola", label: "Segilola (Osun) — only formal producer" },
+            { port: "mmia", label: "MMIA formal air export" }
+          ],
+          modality: ["air"]
+        },
+        {
+          label: "Informal (Zamfara → Togo → UAE)", status: "illegal",
+          waypoints: [
+            { lat: 12.11, lng: 5.93, label: "Zamfara artisanal (Anka, Bukkuyum)", type: "origin", status: "informal" },
+            { lat: 11.00, lng: 6.00, label: "Informal flow → Togo/Dubai", type: "chokepoint", status: "illegal" },
+            { lat: 6.13,  lng: 1.22, label: "Togo pass-through (declared origin)", type: "chokepoint", status: "illegal" }
+          ],
+          modality: ["road","air"]
+        }
+      ],
+      flows_unlocked: [
+        {
+          label: "Formal (Segilola)", status: "formal",
+          waypoints: [
+            { node: "segilola", label: "Segilola (Osun)" },
+            { port: "mmia", label: "MMIA air export" }
+          ],
+          modality: ["air"]
+        },
+        {
+          label: "Formalised artisanal (Zamfara → Kaduna assay → UAE)", status: "formal",
+          waypoints: [
+            { lat: 12.11, lng: 5.93, label: "Zamfara artisanal → LICENSED buying centres", type: "origin" },
+            { lat: 10.52, lng: 7.44, label: "Kaduna central refining/assay", type: "processing" },
+            { port: "mmia", label: "MMIA formal air export — UAE direct" }
+          ],
+          modality: ["road","road","air"]
+        }
+      ],
       waypoints_2024: [
-        { node: "segilola", label: "Segilola (Osun) — only formal producer" },
-        { lat: 12.11, lng: 5.93, label: "Zamfara artisanal (Anka, Bukkuyum)", type: "origin", status: "informal" },
-        { lat: 11.00, lng: 6.00, label: "Informal flow → Togo/Dubai", type: "chokepoint", status: "illegal" },
-        { port: "mmia", label: "MMIA formal air export (Segilola)" }
+        { node: "segilola", label: "Segilola (Osun)" },
+        { port: "mmia" }
       ],
       waypoints_unlocked: [
         { node: "segilola" },
-        { lat: 12.11, lng: 5.93, label: "Zamfara artisanal → LICENSED buying centres", type: "origin" },
-        { lat: 10.52, lng: 7.44, label: "Kaduna central refining/assay", type: "processing" },
-        { port: "mmia", label: "MMIA formal air export — UAE direct" }
+        { port: "mmia" }
       ],
       modality_2024: ["air"],
-      modality_unlocked: ["road","air"],
+      modality_unlocked: ["air"],
       distance_km_2024: 900,
       distance_km_unlocked: 920,
       transit_days_2024: 0.5,
@@ -803,20 +837,6 @@ function renderSecurityZones() {
   });
 }
 
-renderPorts();
-renderNodes();
-renderSecurityZones();
-renderBaseLayers();
-
-document.querySelectorAll("#layer-controls input").forEach(input => {
-  input.addEventListener("change", () => {
-    const layer = App.layers[input.dataset.layer];
-    if (!layer) return;
-    if (input.checked) { if (!map.hasLayer(layer)) layer.addTo(map); }
-    else { if (map.hasLayer(layer)) map.removeLayer(layer); }
-  });
-});
-
 function renderCommodityList() {
   const host = document.getElementById("commodity-list");
   host.innerHTML = "";
@@ -839,9 +859,6 @@ function renderCommodityList() {
     });
   });
 }
-
-renderCommodityList();
-
 
 const map = L.map("map", {
   center: [9.0, 8.5],
@@ -905,6 +922,28 @@ const BASE_WATERWAY = [
   { name: "River Benue", coords: [[9.000,13.200],[8.500,11.500],[8.000,10.000],[7.900,9.000],[7.750,8.000],[7.500,6.900]] },
   { name: "Cross River", coords: [[6.500,9.000],[5.800,8.800],[5.200,8.600],[4.970,8.330]] }
 ];
+
+const NIPOST_BACKBONE = [
+  { name: "Apapa GPO",              lat: 6.4475, lng: 3.3710, note: "Rail-adjacent · container corridor" },
+  { name: "Ikeja GPO",              lat: 6.6018, lng: 3.3515, note: "Lagos mainland hub" },
+  { name: "MMIA IMPC (air cargo)",  lat: 6.5770, lng: 3.3210, note: "International mail + air-cargo bonded" },
+  { name: "Ibadan GPO (Dugbe)",     lat: 7.3921, lng: 3.8834, note: "SW rail-adjacent" },
+  { name: "Enugu GPO (Ogui Rd)",    lat: 6.4413, lng: 7.5007, note: "SE hub · Eastern line" },
+  { name: "Port Harcourt GPO (Station Rd)", lat: 4.7725, lng: 7.0134, note: "Rail-adjacent · Onne linkage" },
+  { name: "Kano GPO (Post Office Rd)", lat: 12.0000, lng: 8.5160, note: "Northern terminal · Lagos–Kano rail" },
+  { name: "Kaduna GPO",             lat: 10.5232, lng: 7.4388, note: "Rail-adjacent · Kaduna ICD" },
+  { name: "Jos GPO",                lat: 9.8965,  lng: 8.8583, note: "Plateau hub" },
+  { name: "Calabar GPO",            lat: 4.9592,  lng: 8.3269, note: "SS hub · port-adjacent" }
+];
+
+function renderNiPostBackbone() {
+  NIPOST_BACKBONE.forEach(g => {
+    const icon = divIcon("rounded", "#faf8f3", 10);
+    const m = L.marker([g.lat, g.lng], { icon, zIndexOffset: 100 });
+    m.bindTooltip(`<strong>${g.name}</strong><br><span style="color:#6b6b63">NiPost GPO</span><br><em style="color:#6b6b63">${g.note}</em>`, { direction: "top", offset: [0,-6] });
+    m.addTo(App.layers.nipost);
+  });
+}
 
 function renderBaseLayers() {
   BASE_RAIL.forEach(r => {
@@ -1058,10 +1097,12 @@ function renderInsight(commodity) {
   `;
 }
 
-function drawCorridor(commodity, waypoints, modality) {
+function drawCorridor(commodity, waypoints, modality, opts = {}) {
   const resolved = waypoints.map(resolveWaypoint);
   const branches = [];
   const mainSegments = [];
+  const illegal = opts.flowStatus === "illegal";
+  const flowLabel = opts.flowLabel;
   for (let i = 0; i < resolved.length - 1; i++) {
     const a = resolved[i], b = resolved[i+1];
     const mod = modality[i] || "road";
@@ -1072,13 +1113,14 @@ function drawCorridor(commodity, waypoints, modality) {
   mainSegments.forEach((seg, idx) => {
     const style = modalityStyle(seg.mod);
     const line = L.polyline([[seg.a.lat, seg.a.lng], [seg.b.lat, seg.b.lng]], {
-      color: style.colorHex,
+      color: illegal ? "#c13a2a" : style.colorHex,
       weight: style.weight + (idx === mainSegments.length - 1 ? 1 : 1),
-      opacity: 0.85,
-      dashArray: style.dashArray,
+      opacity: illegal ? 0.75 : 0.85,
+      dashArray: illegal ? "4 6" : style.dashArray,
       lineCap: "round", lineJoin: "round"
     });
-    line.bindTooltip(`${seg.a.label || "…"} → ${seg.b.label || "…"}<br><span style="color:#6b6b63;text-transform:uppercase;font-size:10px;letter-spacing:0.1em">${seg.mod}</span>`, { sticky: true });
+    const flowPrefix = flowLabel ? `<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:${illegal ? "#c13a2a" : "#6b6b63"};margin-bottom:2px">${flowLabel}</div>` : "";
+    line.bindTooltip(`${flowPrefix}${seg.a.label || "…"} → ${seg.b.label || "…"}<br><span style="color:#6b6b63;text-transform:uppercase;font-size:10px;letter-spacing:0.1em">${seg.mod}${illegal ? " · informal" : ""}</span>`, { sticky: true });
     line.addTo(App.layers.corridor);
   });
 
@@ -1171,9 +1213,14 @@ function selectCommodity(id, opts = {}) {
     halo.addTo(App.layers.originHalo);
   }
 
-  const waypoints = currentState === "unlocked" ? c.waypoints_unlocked : c.waypoints_2024;
-  const modality = currentState === "unlocked" ? c.modality_unlocked : c.modality_2024;
-  drawCorridor(c, waypoints, modality);
+  const flows = currentState === "unlocked" ? c.flows_unlocked : c.flows_2024;
+  if (flows && flows.length) {
+    flows.forEach(f => drawCorridor(c, f.waypoints, f.modality, { flowStatus: f.status, flowLabel: f.label }));
+  } else {
+    const waypoints = currentState === "unlocked" ? c.waypoints_unlocked : c.waypoints_2024;
+    const modality = currentState === "unlocked" ? c.modality_unlocked : c.modality_2024;
+    drawCorridor(c, waypoints, modality);
+  }
   renderChokepointsForCommodity(c);
   if (currentState === "unlocked") renderInterventionsForCommodity(c);
   renderInsight(c);
@@ -1191,11 +1238,30 @@ function selectCommodity(id, opts = {}) {
   }
 
   if (!opts.preserveState) {
-    const bounds = L.latLngBounds(waypoints.map(resolveWaypoint).map(w => [w.lat, w.lng]));
+    const allWps = flows && flows.length
+      ? flows.flatMap(f => f.waypoints)
+      : (currentState === "unlocked" ? c.waypoints_unlocked : c.waypoints_2024);
+    const bounds = L.latLngBounds(allWps.map(resolveWaypoint).map(w => [w.lat, w.lng]));
     if (c.origin_belt) bounds.extend([c.origin_belt.lat, c.origin_belt.lng]);
     map.fitBounds(bounds, { padding: [60, 60], maxZoom: 8, animate: true });
   }
 }
+
+renderPorts();
+renderNodes();
+renderSecurityZones();
+renderBaseLayers();
+renderNiPostBackbone();
+renderCommodityList();
+
+document.querySelectorAll("#layer-controls input").forEach(input => {
+  input.addEventListener("change", () => {
+    const layer = App.layers[input.dataset.layer];
+    if (!layer) return;
+    if (input.checked) { if (!map.hasLayer(layer)) layer.addTo(map); }
+    else { if (map.hasLayer(layer)) map.removeLayer(layer); }
+  });
+});
 
 console.log("Norhaven corridor shell ready");
 </script>
